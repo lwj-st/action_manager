@@ -1,0 +1,40 @@
+{
+  "database": {
+    "path": "github_action_manager.db",
+    "backup_enabled": true,
+    "backup_interval": 24
+  },
+  "github": {
+    "api_base_url": "https://api.github.com",
+    "timeout": 30,
+    "retry_count": 3,
+    "rate_limit_check": true
+  },
+  "ui": {
+    "theme": "default",
+    "language": "zh_CN",
+    "window_size": {
+      "width": 1200,
+      "height": 800
+    },
+    "auto_refresh": true,
+    "refresh_interval": 30
+  },
+  "logging": {
+    "level": "INFO",
+    "file_enabled": true,
+    "file_path": "github_action_manager.log",
+    "max_file_size": 10,
+    "backup_count": 5
+  },
+  "security": {
+    "token_encryption": false,
+    "session_timeout": 3600,
+    "max_login_attempts": 5
+  },
+  "workflow": {
+    "default_branch": "main",
+    "auto_save_config": true,
+    "max_configs_per_user": 50
+  }
+}
