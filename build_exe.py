@@ -45,9 +45,7 @@ a = Analysis(
         ('config.json', '.'),
         ('requirements.txt', '.'),
         ('README.md', '.'),
-        ('TROUBLESHOOTING.md', '.'),
-        ('FIXES.md', '.'),
-        ('PROJECT_STRUCTURE.md', '.')
+        ('LICENSE', '.')
     ],
     hiddenimports=[
         'PyQt5.QtCore',

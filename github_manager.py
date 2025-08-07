@@ -219,7 +219,21 @@ class GitHubManager:
             response = self.session.get(url)
             
             if response.status_code == 200:
-                return response.text
+                # 尝试不同的编码方式
+                try:
+                    # 首先尝试UTF-8
+                    return response.content.decode('utf-8')
+                except UnicodeDecodeError:
+                    try:
+                        # 如果UTF-8失败，尝试GBK
+                        return response.content.decode('gbk')
+                    except UnicodeDecodeError:
+                        try:
+                            # 如果GBK也失败，尝试latin-1
+                            return response.content.decode('latin-1')
+                        except UnicodeDecodeError:
+                            # 最后尝试忽略错误
+                            return response.content.decode('utf-8', errors='ignore')
             return None
             
         except Exception as e:
@@ -278,3 +292,101 @@ class GitHubManager:
         except Exception as e:
             self.logger.error(f"检查速率限制失败: {str(e)}")
             return None 
+
+    def get_latest_workflow_run(self, repo: str, workflow_file: str) -> Optional[Dict[str, Any]]:
+        """获取最新触发的workflow运行信息"""
+        try:
+            if not self.token:
+                return None
+                
+            # 获取workflow runs，按创建时间倒序排列
+            url = f"{self.base_url}/repos/{repo}/actions/workflows/{workflow_file}/runs"
+            params = {
+                "per_page": 1,  # 只获取最新的一个
+                "sort": "created_at",  # 按创建时间排序
+                "direction": "desc"  # 倒序，最新的在前
+            }
+            
+            response = self.session.get(url, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                runs = data.get('workflow_runs', [])
+                if runs:
+                    return runs[0]
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"获取最新workflow运行信息失败: {str(e)}")
+            return None
+    
+    def get_workflow_run_after_trigger(self, repo: str, workflow_file: str, 
+                                      trigger_time: datetime) -> Optional[Dict[str, Any]]:
+        """获取触发后的workflow运行信息"""
+        try:
+            if not self.token:
+                return None
+                
+            # 获取workflow runs
+            url = f"{self.base_url}/repos/{repo}/actions/workflows/{workflow_file}/runs"
+            params = {
+                "per_page": 10  # 获取最近10个运行
+            }
+            
+            response = self.session.get(url, params=params)
+            
+            if response.status_code == 200:
+                data = response.json()
+                runs = data.get('workflow_runs', [])
+                
+                # 确保trigger_time是UTC时间
+                if trigger_time.tzinfo is None:
+                    # 如果没有时区信息，假设为本地时间，转换为UTC
+                    import pytz
+                    local_tz = pytz.timezone('Asia/Shanghai')
+                    trigger_time = local_tz.localize(trigger_time).astimezone(pytz.UTC)
+                else:
+                    # 如果有时区信息，转换为UTC
+                    trigger_time = trigger_time.astimezone(pytz.UTC)
+                
+                self.logger.info(f"触发时间(UTC): {trigger_time}")
+                
+                # 查找触发时间之后的运行
+                for run in runs:
+                    try:
+                        # 解析GitHub时间格式（GitHub返回的是UTC时间）
+                        run_created_at_str = run['created_at']
+                        if run_created_at_str.endswith('Z'):
+                            run_created_at_str = run_created_at_str[:-1] + '+00:00'
+                        
+                        run_created_at = datetime.fromisoformat(run_created_at_str)
+                        # GitHub时间已经是UTC，确保时区信息正确
+                        if run_created_at.tzinfo is None:
+                            import pytz
+                            run_created_at = pytz.UTC.localize(run_created_at)
+                        
+                        self.logger.info(f"运行时间(UTC): {run_created_at}, 运行ID: {run['id']}")
+                        
+                        if run_created_at > trigger_time:
+                            self.logger.info(f"找到匹配的运行: {run['id']}")
+                            return run
+                    except Exception as e:
+                        self.logger.warning(f"解析运行时间失败: {e}")
+                        continue
+                        
+                self.logger.warning("未找到触发时间之后的运行")
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"获取触发后的workflow运行信息失败: {str(e)}")
+            return None
+    
+    def open_url_in_browser(self, url: str) -> bool:
+        """在浏览器中打开URL"""
+        try:
+            import webbrowser
+            webbrowser.open(url)
+            return True
+        except Exception as e:
+            self.logger.error(f"在浏览器中打开URL失败: {str(e)}")
+            return False 

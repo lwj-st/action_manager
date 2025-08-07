@@ -180,13 +180,17 @@ class WorkflowManager:
             return False
             
     def trigger_workflow(self, repo: str, workflow: str, branch: str = "main", 
-                        inputs: Dict[str, Any] = None) -> bool:
+                        inputs: Dict[str, Any] = None, config_id: int = None) -> Optional[Dict[str, Any]]:
         """触发工作流"""
         try:
             # 检查GitHub连接
             if not self.github_manager.test_connection():
                 self.logger.error("GitHub连接失败")
-                return False
+                return None
+                
+            # 记录触发时间（使用UTC时间）
+            import pytz
+            trigger_time = datetime.now(pytz.UTC)
                 
             # 触发工作流
             result = self.github_manager.trigger_workflow(repo, workflow, branch, inputs)
@@ -194,31 +198,74 @@ class WorkflowManager:
             if result:
                 self.logger.info(f"工作流触发成功: {repo}/{workflow}")
                 
-                # 记录运行信息
-                if self.db_manager:
-                    # 查找对应的配置ID
-                    configs = self.get_all_configs()
-                    config_id = None
-                    for config in configs:
-                        if config['repo'] == repo and config['workflow'] == workflow:
-                            config_id = config['id']
-                            break
-                            
-                    if config_id:
-                        self.db_manager.insert_workflow_run(
-                            config_id, 
-                            f"triggered_{datetime.now().strftime('%Y%m%d_%H%M%S')}", 
-                            "triggered"
-                        )
-                        
-                return True
+                # 立即返回成功，后台获取运行信息
+                return {
+                    'success': True,
+                    'repo': repo,
+                    'workflow': workflow,
+                    'triggered_at': trigger_time.isoformat(),
+                    'note': '触发成功，运行信息将在后台获取'
+                }
             else:
                 self.logger.error(f"工作流触发失败: {repo}/{workflow}")
-                return False
+                return None
                 
         except Exception as e:
             self.logger.error(f"触发工作流失败: {str(e)}")
-            return False
+            return None
+            
+    def get_triggered_run_info(self, repo: str, workflow: str, trigger_time: datetime, config_id: int = None):
+        """后台获取刚触发的运行信息"""
+        try:
+            import time
+            # 等待5秒让GitHub处理
+            time.sleep(5)
+            
+            # 直接获取最新的运行（应该是刚触发的）
+            run_info = self.github_manager.get_latest_workflow_run(repo, workflow)
+            
+            if run_info:
+                # 创建独立的数据库连接
+                from database import DatabaseManager
+                temp_db = DatabaseManager()
+                temp_db.init_database()
+                
+                try:
+                    # 存储运行信息到数据库
+                    if config_id:
+                        temp_db.insert_workflow_run(
+                            config_id=config_id,
+                            run_id=str(run_info['id']),
+                            status=run_info.get('status', 'unknown'),
+                            html_url=run_info.get('html_url'),
+                            conclusion=run_info.get('conclusion'),
+                            logs_url=run_info.get('logs_url'),
+                            workflow_name=run_info.get('name'),
+                            repo=repo,
+                            branch=run_info.get('head_branch', 'main'),
+                            trigger_user=run_info.get('actor', {}).get('login')
+                        )
+                        self.logger.info(f"运行信息已存储到数据库: {run_info['id']}")
+                    else:
+                        # 如果没有config_id，也存储到数据库
+                        temp_db.insert_workflow_run(
+                            config_id=None,
+                            run_id=str(run_info['id']),
+                            status=run_info.get('status', 'unknown'),
+                            html_url=run_info.get('html_url'),
+                            conclusion=run_info.get('conclusion'),
+                            logs_url=run_info.get('logs_url'),
+                            workflow_name=run_info.get('name'),
+                            repo=repo,
+                            branch=run_info.get('head_branch', 'main'),
+                            trigger_user=run_info.get('actor', {}).get('login')
+                        )
+                        self.logger.info(f"运行信息已存储到数据库: {run_info['id']}")
+                finally:
+                    temp_db.close()
+                    
+        except Exception as e:
+            self.logger.error(f"后台获取运行信息失败: {str(e)}")
             
     def trigger_config_workflow(self, config_id: int) -> bool:
         """触发配置的工作流"""
@@ -255,12 +302,70 @@ class WorkflowManager:
             self.logger.error(f"获取工作流运行记录失败: {str(e)}")
             return []
             
-    def cancel_workflow_run(self, repo: str, run_id: str) -> bool:
+    def get_workflow_runs_from_db(self, config_id: int = None) -> List[Dict[str, Any]]:
+        """从数据库获取工作流运行记录"""
+        try:
+            if not self.db_manager:
+                return []
+                
+            return self.db_manager.get_workflow_runs(config_id)
+            
+        except Exception as e:
+            self.logger.error(f"从数据库获取工作流运行记录失败: {str(e)}")
+            return []
+    
+    def refresh_workflow_run_status(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """刷新工作流运行状态"""
+        try:
+            # 从数据库获取运行记录
+            run_record = self.db_manager.get_workflow_run_by_run_id(run_id)
+            if not run_record:
+                return None
+                
+            # 从GitHub获取最新状态
+            run_info = self.github_manager.get_workflow_run(run_record['repo'], run_id)
+            if run_info:
+                # 更新数据库
+                self.db_manager.update_workflow_run_status(
+                    run_id, 
+                    run_info.get('status', 'unknown'),
+                    run_info.get('conclusion')
+                )
+                
+                return {
+                    'run_id': run_id,
+                    'status': run_info.get('status'),
+                    'conclusion': run_info.get('conclusion'),
+                    'html_url': run_info.get('html_url'),
+                    'created_at': run_info.get('created_at'),
+                    'updated_at': run_info.get('updated_at')
+                }
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"刷新工作流运行状态失败: {str(e)}")
+            return None
+    
+    def cancel_workflow_run(self, run_id: str) -> bool:
         """取消工作流运行"""
         try:
-            success = self.github_manager.cancel_workflow_run(repo, run_id)
+            # 检查是否是临时run_id
+            if run_id.startswith('triggered_'):
+                self.logger.warning(f"无法取消临时运行ID: {run_id}")
+                return False
+                
+            # 从数据库获取运行记录
+            run_record = self.db_manager.get_workflow_run_by_run_id(run_id)
+            if not run_record:
+                self.logger.error(f"工作流运行记录不存在: {run_id}")
+                return False
+                
+            # 取消运行
+            success = self.github_manager.cancel_workflow_run(run_record['repo'], run_id)
             
             if success:
+                # 更新数据库状态
+                self.db_manager.update_workflow_run_status(run_id, 'cancelled', 'cancelled')
                 self.logger.info(f"工作流运行取消成功: {run_id}")
             else:
                 self.logger.error(f"工作流运行取消失败: {run_id}")
@@ -270,14 +375,54 @@ class WorkflowManager:
         except Exception as e:
             self.logger.error(f"取消工作流运行失败: {str(e)}")
             return False
-            
-    def get_workflow_run_logs(self, repo: str, run_id: str) -> Optional[str]:
+    
+    def get_workflow_run_logs(self, run_id: str) -> Optional[str]:
         """获取工作流运行日志"""
         try:
-            return self.github_manager.get_workflow_run_logs(repo, run_id)
+            # 检查是否是临时run_id
+            if run_id.startswith('triggered_'):
+                self.logger.warning(f"无法获取临时运行ID的日志: {run_id}")
+                return "无法获取临时运行ID的日志，请等待运行信息同步或手动刷新。"
+                
+            # 从数据库获取运行记录
+            run_record = self.db_manager.get_workflow_run_by_run_id(run_id)
+            if not run_record:
+                self.logger.error(f"工作流运行记录不存在: {run_id}")
+                return None
+                
+            # 获取日志
+            logs = self.github_manager.get_workflow_run_logs(run_record['repo'], run_id)
+            
+            if logs:
+                self.logger.info(f"获取工作流运行日志成功: {run_id}")
+            else:
+                self.logger.warning(f"工作流运行日志为空: {run_id}")
+                
+            return logs
+            
         except Exception as e:
             self.logger.error(f"获取工作流运行日志失败: {str(e)}")
             return None
+    
+    def open_workflow_run_in_browser(self, run_id: str) -> bool:
+        """在浏览器中打开工作流运行"""
+        try:
+            import webbrowser
+            
+            # 从数据库获取运行记录
+            run_record = self.db_manager.get_workflow_run_by_run_id(run_id)
+            if not run_record or not run_record.get('html_url'):
+                self.logger.error(f"工作流运行记录或URL不存在: {run_id}")
+                return False
+                
+            # 打开浏览器
+            webbrowser.open(run_record['html_url'])
+            self.logger.info(f"在浏览器中打开工作流运行: {run_id}")
+            return True
+            
+        except Exception as e:
+            self.logger.error(f"打开工作流运行失败: {str(e)}")
+            return False
             
     def validate_workflow_config(self, repo: str, workflow: str) -> bool:
         """验证工作流配置"""
@@ -327,3 +472,31 @@ class WorkflowManager:
         except Exception as e:
             self.logger.error(f"搜索工作流失败: {str(e)}")
             return [] 
+
+    def get_all_runs(self) -> List[Dict[str, Any]]:
+        """获取所有工作流运行记录"""
+        try:
+            if not self.db_manager:
+                return []
+                
+            return self.db_manager.get_workflow_runs()
+            
+        except Exception as e:
+            self.logger.error(f"获取所有工作流运行记录失败: {str(e)}")
+            return []
+    
+    def get_run_by_id(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """根据ID获取工作流运行记录"""
+        try:
+            if not self.db_manager:
+                return None
+                
+            return self.db_manager.get_workflow_run_by_run_id(run_id)
+            
+        except Exception as e:
+            self.logger.error(f"根据ID获取工作流运行记录失败: {str(e)}")
+            return None
+    
+    def get_run_logs(self, run_id: str) -> Optional[str]:
+        """获取工作流运行日志（兼容方法）"""
+        return self.get_workflow_run_logs(run_id) 

@@ -168,73 +168,134 @@ class MainWindow(QMainWindow):
         
     def init_ui(self):
         """初始化用户界面"""
-        self.setWindowTitle("GitHub Action 管理系统 v2.1 (修复版)")
+        self.setWindowTitle("GitHub Action 管理系统 v3.0")
         self.setGeometry(100, 100, 1400, 900)
         
         # 设置样式
         self.setStyleSheet("""
             QMainWindow {
-                background-color: #f5f5f5;
+                background: qlineargradient(x1:0, y1:0, x2:1, y2:1,
+                    stop:0 #f8f9fa, stop:1 #e9ecef);
             }
             QTabWidget::pane {
-                border: 1px solid #c0c0c0;
+                border: 1px solid #dee2e6;
+                border-radius: 8px;
                 background-color: white;
+                margin-top: -1px;
             }
             QTabBar::tab {
-                background-color: #e1e1e1;
-                padding: 10px 20px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #f8f9fa, stop:1 #e9ecef);
+                border: 1px solid #dee2e6;
+                border-bottom: none;
+                border-top-left-radius: 8px;
+                border-top-right-radius: 8px;
+                padding: 12px 24px;
                 margin-right: 2px;
-                font-size: 12px;
+                font-size: 13px;
+                font-weight: 500;
+                color: #495057;
             }
             QTabBar::tab:selected {
-                background-color: white;
-                border-bottom: 3px solid #0078d4;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #ffffff, stop:1 #f8f9fa);
+                border-bottom: 2px solid #007bff;
+                color: #007bff;
+                font-weight: 600;
+            }
+            QTabBar::tab:hover {
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #e9ecef, stop:1 #dee2e6);
             }
             QPushButton {
-                background-color: #0078d4;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #007bff, stop:1 #0056b3);
                 color: white;
                 border: none;
-                padding: 8px 16px;
-                border-radius: 4px;
-                font-weight: bold;
-                font-size: 11px;
+                padding: 10px 20px;
+                border-radius: 6px;
+                font-weight: 600;
+                font-size: 12px;
+                min-width: 80px;
             }
             QPushButton:hover {
-                background-color: #106ebe;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #0056b3, stop:1 #004085);
             }
             QPushButton:pressed {
-                background-color: #005a9e;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #004085, stop:1 #002752);
             }
             QPushButton:disabled {
-                background-color: #cccccc;
+                background: #6c757d;
+                color: #adb5bd;
             }
             QLineEdit, QTextEdit {
-                border: 1px solid #c0c0c0;
-                border-radius: 4px;
-                padding: 8px;
-                font-size: 11px;
+                border: 2px solid #e9ecef;
+                border-radius: 6px;
+                padding: 10px;
+                font-size: 12px;
+                background-color: white;
+            }
+            QLineEdit:focus, QTextEdit:focus {
+                border-color: #007bff;
+                outline: none;
             }
             QTableWidget {
-                gridline-color: #e1e1e1;
+                gridline-color: #e9ecef;
                 selection-background-color: #e3f2fd;
-                font-size: 11px;
+                font-size: 12px;
+                border: 1px solid #dee2e6;
+                border-radius: 6px;
+                background-color: white;
+            }
+            QTableWidget::item {
+                padding: 6px;
+                border-bottom: 1px solid #f8f9fa;
+            }
+            QTableWidget::item:selected {
+                background-color: #e3f2fd;
+                color: #000;
             }
             QHeaderView::section {
-                background-color: #f8f9fa;
-                border: 1px solid #e1e1e1;
-                padding: 8px;
-                font-weight: bold;
-                font-size: 11px;
+                background: qlineargradient(x1:0, y1:0, x2:0, y2:1,
+                    stop:0 #f8f9fa, stop:1 #e9ecef);
+                border: 1px solid #dee2e6;
+                padding: 12px 8px;
+                font-weight: 600;
+                font-size: 12px;
+                color: #495057;
             }
             QGroupBox {
-                font-weight: bold;
-                font-size: 12px;
-                margin-top: 10px;
+                font-weight: 600;
+                font-size: 14px;
+                margin-top: 15px;
+                border: 2px solid #dee2e6;
+                border-radius: 8px;
+                padding-top: 15px;
+                background-color: white;
             }
             QGroupBox::title {
                 subcontrol-origin: margin;
-                left: 10px;
-                padding: 0 5px 0 5px;
+                left: 15px;
+                padding: 0 8px 0 8px;
+                color: #495057;
+            }
+            QScrollBar:vertical {
+                background: #f8f9fa;
+                width: 12px;
+                border-radius: 6px;
+            }
+            QScrollBar::handle:vertical {
+                background: #adb5bd;
+                border-radius: 6px;
+                min-height: 20px;
+            }
+            QScrollBar::handle:vertical:hover {
+                background: #6c757d;
+            }
+            QScrollBar::add-line:vertical, QScrollBar::sub-line:vertical {
+                height: 0px;
             }
         """)
         
@@ -246,10 +307,18 @@ class MainWindow(QMainWindow):
         main_layout = QVBoxLayout(central_widget)
         
         # 创建标题
-        title_label = QLabel("GitHub Action 管理系统 v2.1 (修复版)")
+        title_label = QLabel("🚀 GitHub Action 管理系统 v3.0")
         title_label.setAlignment(Qt.AlignCenter)
-        title_label.setFont(QFont("Microsoft YaHei", 18, QFont.Bold))
-        title_label.setStyleSheet("color: #0078d4; margin: 15px;")
+        title_label.setFont(QFont("Microsoft YaHei", 20, QFont.Bold))
+        title_label.setStyleSheet("""
+            color: #2c3e50;
+            margin: 20px;
+            padding: 15px;
+            background: qlineargradient(x1:0, y1:0, x2:1, y2:0,
+                stop:0 #3498db, stop:1 #2980b9);
+            border-radius: 10px;
+            color: white;
+        """)
         main_layout.addWidget(title_label)
         
         # 创建标签页
@@ -259,6 +328,7 @@ class MainWindow(QMainWindow):
         # 创建各个标签页
         self.create_dashboard_tab()
         self.create_workflow_tab()
+        self.create_workflow_runs_tab()  # 新增工作流运行管理标签页
         self.create_user_tab()
         self.create_log_tab()
         
@@ -306,7 +376,7 @@ class MainWindow(QMainWindow):
         layout.addWidget(quick_group)
         layout.addStretch()
         
-        self.tab_widget.addTab(dashboard_widget, "仪表板")
+        self.tab_widget.addTab(dashboard_widget, "📊 仪表板")
         
     def create_workflow_tab(self):
         """创建工作流管理标签页"""
@@ -378,13 +448,58 @@ class MainWindow(QMainWindow):
         header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 分支
         header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # 状态
         header.setSectionResizeMode(7, QHeaderView.Fixed)  # 操作
-        self.workflow_table.setColumnWidth(7, 200)
+        self.workflow_table.setColumnWidth(7, 320)  # 进一步增加操作列宽度
         
         list_layout.addWidget(self.workflow_table)
         
         layout.addWidget(list_group)
         
-        self.tab_widget.addTab(workflow_widget, "工作流管理")
+        self.tab_widget.addTab(workflow_widget, "🛠️ 工作流管理")
+        
+    def create_workflow_runs_tab(self):
+        """创建工作流运行管理标签页"""
+        runs_widget = QWidget()
+        layout = QVBoxLayout(runs_widget)
+        
+        # 操作按钮区域
+        runs_actions_group = QGroupBox("操作")
+        runs_actions_layout = QHBoxLayout(runs_actions_group)
+        
+        refresh_runs_btn = QPushButton("🔄 刷新")
+        refresh_runs_btn.clicked.connect(self.load_workflow_runs)
+        
+        runs_actions_layout.addWidget(refresh_runs_btn)
+        runs_actions_layout.addStretch()
+        
+        layout.addWidget(runs_actions_group)
+        
+        # 工作流运行列表
+        runs_group = QGroupBox("工作流运行记录")
+        runs_layout = QVBoxLayout(runs_group)
+        
+        self.runs_table = QTableWidget()
+        self.runs_table.setColumnCount(8)
+        self.runs_table.setHorizontalHeaderLabels([
+            "运行ID", "工作流名称", "仓库", "分支", "状态", "结论", "开始时间", "操作"
+        ])
+        
+        # 设置列宽
+        header = self.runs_table.horizontalHeader()
+        header.setSectionResizeMode(0, QHeaderView.ResizeToContents)  # 运行ID
+        header.setSectionResizeMode(1, QHeaderView.Stretch)  # 工作流名称
+        header.setSectionResizeMode(2, QHeaderView.ResizeToContents)  # 仓库
+        header.setSectionResizeMode(3, QHeaderView.ResizeToContents)  # 分支
+        header.setSectionResizeMode(4, QHeaderView.ResizeToContents)  # 状态
+        header.setSectionResizeMode(5, QHeaderView.ResizeToContents)  # 结论
+        header.setSectionResizeMode(6, QHeaderView.ResizeToContents)  # 开始时间
+        header.setSectionResizeMode(7, QHeaderView.Fixed)  # 操作
+        self.runs_table.setColumnWidth(7, 320)  # 进一步增加操作列宽度
+        
+        runs_layout.addWidget(self.runs_table)
+        
+        layout.addWidget(runs_group)
+        
+        self.tab_widget.addTab(runs_widget, "🚀 工作流运行")
         
     def create_user_tab(self):
         """创建用户管理标签页"""
@@ -442,7 +557,7 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(user_list_group)
         
-        self.tab_widget.addTab(user_widget, "用户管理")
+        self.tab_widget.addTab(user_widget, "👤 用户管理")
         
     def create_log_tab(self):
         """创建日志标签页"""
@@ -476,7 +591,7 @@ class MainWindow(QMainWindow):
         
         layout.addWidget(log_group)
         
-        self.tab_widget.addTab(log_widget, "系统日志")
+        self.tab_widget.addTab(log_widget, "📝 系统日志")
         
     def select_current_user(self):
         """选择当前用户"""
@@ -521,6 +636,9 @@ class MainWindow(QMainWindow):
             
             # 加载工作流配置
             self.load_workflow_configs()
+            
+            # 加载工作流运行记录
+            self.load_workflow_runs()
             
             # 更新状态
             self.refresh_status()
@@ -621,9 +739,32 @@ class MainWindow(QMainWindow):
             # 触发工作流
             result = self.workflow_manager.trigger_workflow(repo, workflow, branch, self.current_params)
             
-            if result:
+            if result and result.get('success'):
+                # 立即显示成功提示
+                QMessageBox.information(self, "成功", "工作流触发成功！")
+                
                 self.log_message(f"工作流触发成功: {repo}/{workflow}")
-                QMessageBox.information(self, "成功", "工作流触发成功")
+                
+                # 后台获取运行信息
+                import threading
+                import time
+                import pytz
+                trigger_time = datetime.now(pytz.UTC)
+                thread = threading.Thread(
+                    target=self.workflow_manager.get_triggered_run_info,
+                    args=(repo, workflow, trigger_time, None)
+                )
+                thread.daemon = True
+                thread.start()
+                
+                # 延迟6秒后刷新运行列表，确保后台线程完成
+                def delayed_refresh():
+                    time.sleep(6)
+                    self.load_workflow_runs()
+                
+                refresh_thread = threading.Thread(target=delayed_refresh)
+                refresh_thread.daemon = True
+                refresh_thread.start()
             else:
                 self.log_message(f"工作流触发失败: {repo}/{workflow}", "ERROR")
                 QMessageBox.critical(self, "错误", "工作流触发失败")
@@ -727,7 +868,7 @@ class MainWindow(QMainWindow):
             
             if config_id:
                 self.log_message(f"工作流配置保存成功: {config_name}")
-                QMessageBox.information(self, "成功", "工作流配置保存成功")
+                # 去掉成功提示对话框，只保留日志
                 self.load_workflow_configs()
             else:
                 self.log_message("工作流配置保存失败", "ERROR")
@@ -758,7 +899,7 @@ class MainWindow(QMainWindow):
             
             if user_id:
                 self.log_message(f"用户添加成功: {username} (ID: {user_id})")
-                QMessageBox.information(self, "成功", f"用户添加成功 (ID: {user_id})")
+                # 去掉成功提示对话框，只保留日志
                 self.load_users()
                 self.username_input.clear()
                 self.token_input.clear()
@@ -812,7 +953,7 @@ class MainWindow(QMainWindow):
                 
                 # 删除按钮
                 delete_btn = QPushButton("删除")
-                delete_btn.setStyleSheet("background-color: #dc3545; font-size: 10px; padding: 4px 8px;")
+                delete_btn.setStyleSheet("background-color: #dc3545; font-size: 13px; font-weight: 600; padding: 8px 16px; min-width: 60px; min-height: 32px; border-radius: 4px;")
                 delete_btn.clicked.connect(lambda checked, user_id=user['id']: self.delete_user(user_id))
                 self.user_table.setCellWidget(i, 4, delete_btn)
                 
@@ -853,19 +994,19 @@ class MainWindow(QMainWindow):
                 
                 # 操作按钮
                 button_layout = QHBoxLayout()
-                button_layout.setContentsMargins(2, 2, 2, 2)
-                button_layout.setSpacing(4)
+                button_layout.setContentsMargins(0, 0, 0, 0)
+                button_layout.setSpacing(10)
                 
                 trigger_btn = QPushButton("触发")
-                trigger_btn.setStyleSheet("background-color: #28a745; font-size: 10px; padding: 4px 8px;")
+                trigger_btn.setStyleSheet("background-color: #28a745; font-size: 13px; font-weight: 600; padding: 1px 16px; min-width: 60px; min-height: 32px; border-radius: 4px;")
                 trigger_btn.clicked.connect(lambda checked, c=config: self.trigger_saved_workflow(c))
                 
                 edit_btn = QPushButton("编辑")
-                edit_btn.setStyleSheet("background-color: #ffc107; color: black; font-size: 10px; padding: 4px 8px;")
+                edit_btn.setStyleSheet("background-color: #ffc107; color: black; font-size: 13px; font-weight: 600; padding: 1px 16px; min-width: 60px; min-height: 32px; border-radius: 4px;")
                 edit_btn.clicked.connect(lambda checked, c=config: self.edit_workflow_config(c))
                 
                 delete_btn = QPushButton("删除")
-                delete_btn.setStyleSheet("background-color: #dc3545; font-size: 10px; padding: 4px 8px;")
+                delete_btn.setStyleSheet("background-color: #dc3545; font-size: 13px; font-weight: 600; padding: 1px 16px; min-width: 60px; min-height: 32px; border-radius: 4px;")
                 delete_btn.clicked.connect(lambda checked, config_id=config['id']: self.delete_workflow_config(config_id))
                 
                 button_layout.addWidget(trigger_btn)
@@ -896,12 +1037,36 @@ class MainWindow(QMainWindow):
                 config['repo'], 
                 config['workflow'], 
                 config['branch'], 
-                config.get('inputs', {})
+                config.get('inputs', {}),
+                config['id']  # 传递config_id
             )
             
-            if result:
+            if result and result.get('success'):
+                # 立即显示成功提示
+                QMessageBox.information(self, "成功", "工作流触发成功！")
+                
                 self.log_message(f"保存的工作流触发成功: {config['name']}")
-                QMessageBox.information(self, "成功", "工作流触发成功")
+                
+                # 后台获取运行信息
+                import threading
+                import time
+                import pytz
+                trigger_time = datetime.now(pytz.UTC)
+                thread = threading.Thread(
+                    target=self.workflow_manager.get_triggered_run_info,
+                    args=(config['repo'], config['workflow'], trigger_time, config['id'])
+                )
+                thread.daemon = True
+                thread.start()
+                
+                # 延迟6秒后刷新运行列表，确保后台线程完成
+                def delayed_refresh():
+                    time.sleep(6)
+                    self.load_workflow_runs()
+                
+                refresh_thread = threading.Thread(target=delayed_refresh)
+                refresh_thread.daemon = True
+                refresh_thread.start()
             else:
                 self.log_message(f"保存的工作流触发失败: {config['name']}", "ERROR")
                 QMessageBox.critical(self, "错误", "工作流触发失败")
@@ -993,6 +1158,302 @@ class MainWindow(QMainWindow):
         except Exception as e:
             self.log_message(f"导出日志失败: {str(e)}", "ERROR")
             QMessageBox.critical(self, "错误", f"导出日志失败: {str(e)}")
+
+    def load_workflow_runs(self):
+        """加载工作流运行记录"""
+        try:
+            # 先尝试同步运行信息
+            self.sync_workflow_runs_silent()
+            
+            # 然后加载运行记录
+            runs = self.workflow_manager.get_workflow_runs_from_db()
+            self.runs_table.setRowCount(len(runs))
+            
+            for i, run in enumerate(runs):
+                self.runs_table.setItem(i, 0, QTableWidgetItem(str(run.get('run_id', ''))))
+                self.runs_table.setItem(i, 1, QTableWidgetItem(run.get('workflow_name', '未知')))
+                self.runs_table.setItem(i, 2, QTableWidgetItem(run.get('repo', '')))
+                self.runs_table.setItem(i, 3, QTableWidgetItem(run.get('branch', '')))
+                
+                # 状态列
+                status = run.get('status', 'unknown')
+                status_item = QTableWidgetItem(status)
+                if status == 'completed':
+                    status_item.setForeground(QColor("green"))
+                elif status == 'in_progress':
+                    status_item.setForeground(QColor("blue"))
+                elif status == 'failed':
+                    status_item.setForeground(QColor("red"))
+                self.runs_table.setItem(i, 4, status_item)
+                
+                # 结论列
+                conclusion = run.get('conclusion', '')
+                conclusion_item = QTableWidgetItem(conclusion)
+                if conclusion == 'success':
+                    conclusion_item.setForeground(QColor("green"))
+                elif conclusion == 'failure':
+                    conclusion_item.setForeground(QColor("red"))
+                elif conclusion == 'cancelled':
+                    conclusion_item.setForeground(QColor("orange"))
+                self.runs_table.setItem(i, 5, conclusion_item)
+                
+                # 开始时间
+                created_at = run.get('created_at', '')
+                if created_at:
+                    # 格式化时间显示
+                    try:
+                        from datetime import datetime
+                        dt = datetime.fromisoformat(created_at.replace('Z', '+00:00'))
+                        formatted_time = dt.strftime('%Y-%m-%d %H:%M:%S')
+                        self.runs_table.setItem(i, 6, QTableWidgetItem(formatted_time))
+                    except:
+                        self.runs_table.setItem(i, 6, QTableWidgetItem(created_at))
+                else:
+                    self.runs_table.setItem(i, 6, QTableWidgetItem(''))
+                
+                # 操作按钮
+                button_layout = QHBoxLayout()
+                button_layout.setContentsMargins(0, 0, 0, 0)
+                button_layout.setSpacing(10)
+                
+                # 取消运行按钮
+                cancel_btn = QPushButton("❌ 取消")
+                cancel_btn.setStyleSheet("background-color: #dc3545; font-size: 13px; font-weight: 600; padding: 8px 16px; min-width: 70px; min-height: 32px; border-radius: 4px;")
+                cancel_btn.setToolTip("取消运行")
+                cancel_btn.clicked.connect(lambda checked, run_id=run.get('run_id'): self.cancel_workflow_run(run_id))
+                button_layout.addWidget(cancel_btn)
+                
+                # 浏览器查看按钮
+                if run.get('html_url'):
+                    open_browser_btn = QPushButton("🌐 查看")
+                    open_browser_btn.setStyleSheet("background-color: #28a745; font-size: 13px; font-weight: 600; padding: 8px 16px; min-width: 70px; min-height: 32px; border-radius: 4px;")
+                    open_browser_btn.setToolTip("在浏览器中打开")
+                    open_browser_btn.clicked.connect(lambda checked, run_id=run.get('run_id'): self.open_run_in_browser(run_id))
+                    button_layout.addWidget(open_browser_btn)
+                
+                # 查看日志按钮
+                view_logs_btn = QPushButton("📋 日志")
+                view_logs_btn.setStyleSheet("background-color: #007bff; font-size: 13px; font-weight: 600; padding: 8px 16px; min-width: 70px; min-height: 32px; border-radius: 4px;")
+                view_logs_btn.setToolTip("查看日志")
+                view_logs_btn.clicked.connect(lambda checked, run_id=run.get('run_id'): self.view_run_logs(run_id))
+                button_layout.addWidget(view_logs_btn)
+                
+                button_widget = QWidget()
+                button_widget.setLayout(button_layout)
+                self.runs_table.setCellWidget(i, 7, button_widget)
+                
+        except Exception as e:
+            self.log_message(f"加载工作流运行记录失败: {str(e)}", "ERROR")
+            
+
+            
+    def open_run_in_browser(self, run_id):
+        """在浏览器中打开指定运行"""
+        try:
+            run = self.workflow_manager.get_run_by_id(run_id)
+            if run and run.get('html_url'):
+                url = run['html_url']
+                self.log_message(f"尝试打开运行URL: {url}")
+                if self.github_manager.open_url_in_browser(url):
+                    self.log_message(f"成功打开运行URL: {url}")
+                    QMessageBox.information(self, "成功", f"已打开运行URL: {url}")
+                else:
+                    self.log_message(f"无法打开运行URL: {url}", "ERROR")
+                    QMessageBox.critical(self, "错误", f"无法打开运行URL: {url}")
+            else:
+                self.log_message(f"运行记录或URL不存在: {run_id}", "ERROR")
+                QMessageBox.critical(self, "错误", f"运行记录或URL不存在: {run_id}")
+        except Exception as e:
+            self.log_message(f"打开运行URL失败: {str(e)}", "ERROR")
+            QMessageBox.critical(self, "错误", f"打开运行URL失败: {str(e)}")
+            
+    def view_run_logs(self, run_id):
+        """查看指定运行的日志"""
+        try:
+            # 检查是否是临时run_id
+            if run_id.startswith('triggered_'):
+                QMessageBox.warning(self, "警告", f"无法获取临时运行ID的日志: {run_id}\n请等待运行信息同步或手动刷新。")
+                return
+                
+            logs = self.workflow_manager.get_run_logs(run_id)
+            if logs:
+                self.log_message(f"获取到运行日志: {run_id}")
+                self.show_run_logs(logs)
+            else:
+                self.log_message(f"未找到日志: {run_id}", "ERROR")
+                QMessageBox.critical(self, "错误", f"未找到日志: {run_id}")
+        except Exception as e:
+            self.log_message(f"获取运行日志失败: {str(e)}", "ERROR")
+            QMessageBox.critical(self, "错误", f"获取运行日志失败: {str(e)}")
+            
+    def show_run_logs(self, logs):
+        """显示运行日志"""
+        try:
+            # 创建一个新的对话框来显示日志
+            dialog = QDialog(self)
+            dialog.setWindowTitle("运行日志")
+            dialog.setModal(True)
+            dialog.resize(800, 600)
+            
+            layout = QVBoxLayout(dialog)
+            
+            # 日志文本区域
+            log_text = QTextEdit()
+            log_text.setReadOnly(True)
+            log_text.setFont(QFont("Consolas", 10))
+            
+            # 确保日志内容正确显示
+            if isinstance(logs, bytes):
+                try:
+                    logs = logs.decode('utf-8')
+                except UnicodeDecodeError:
+                    try:
+                        logs = logs.decode('gbk')
+                    except UnicodeDecodeError:
+                        logs = logs.decode('utf-8', errors='ignore')
+            
+            log_text.setPlainText(logs)
+            
+            layout.addWidget(log_text)
+            
+            # 按钮
+            button_layout = QHBoxLayout()
+            
+            copy_btn = QPushButton("复制")
+            copy_btn.clicked.connect(lambda: self.copy_to_clipboard(logs))
+            
+            close_btn = QPushButton("关闭")
+            close_btn.clicked.connect(dialog.accept)
+            
+            button_layout.addWidget(copy_btn)
+            button_layout.addStretch()
+            button_layout.addWidget(close_btn)
+            
+            layout.addLayout(button_layout)
+            
+            dialog.exec_()
+            
+        except Exception as e:
+            self.log_message(f"显示日志失败: {str(e)}", "ERROR")
+            QMessageBox.critical(self, "错误", f"显示日志失败: {str(e)}")
+    
+    def copy_to_clipboard(self, text):
+        """复制文本到剪贴板"""
+        try:
+            from PyQt5.QtWidgets import QApplication
+            QApplication.clipboard().setText(text)
+            self.log_message("日志已复制到剪贴板")
+        except Exception as e:
+            self.log_message(f"复制到剪贴板失败: {str(e)}", "ERROR")
+        
+    def cancel_workflow_run(self, run_id):
+        """取消指定运行"""
+        try:
+            # 检查是否是临时run_id
+            if run_id.startswith('triggered_'):
+                QMessageBox.warning(self, "警告", f"无法取消临时运行ID: {run_id}\n请等待运行信息同步或手动刷新。")
+                return
+                
+            run = self.workflow_manager.get_run_by_id(run_id)
+            if run:
+                status = run.get('status', '')
+                if status == 'completed':
+                    QMessageBox.warning(self, "警告", f"运行已结束，无法取消: {run_id}")
+                    return
+                    
+                reply = QMessageBox.question(self, "确认", f"确定要取消运行 {run_id} 吗？",
+                                           QMessageBox.Yes | QMessageBox.No)
+                
+                if reply == QMessageBox.Yes:
+                    if self.workflow_manager.cancel_workflow_run(run_id):
+                        self.log_message(f"运行取消成功: {run_id}")
+                        QMessageBox.information(self, "成功", f"运行取消成功: {run_id}")
+                        self.load_workflow_runs() # 刷新运行列表
+                    else:
+                        self.log_message(f"运行取消失败: {run_id}", "ERROR")
+                        QMessageBox.critical(self, "错误", f"运行取消失败: {run_id}")
+            else:
+                self.log_message(f"未找到运行记录: {run_id}", "ERROR")
+                QMessageBox.critical(self, "错误", f"未找到运行记录: {run_id}")
+        except Exception as e:
+            self.log_message(f"取消运行失败: {str(e)}", "ERROR")
+            QMessageBox.critical(self, "错误", f"取消运行失败: {str(e)}")
+
+    def sync_workflow_runs_silent(self):
+        """静默同步工作流运行信息"""
+        try:
+            # 获取所有配置
+            configs = self.workflow_manager.get_all_configs()
+            if not configs:
+                return
+                
+            # 检查是否有可用的Token
+            users = self.user_manager.get_all_users()
+            if not users:
+                return
+                
+            # 使用当前用户或第一个用户的Token
+            user_id = self.current_user_id if self.current_user_id else users[0]['id']
+            user_token = self.user_manager.get_user_token(user_id)
+            if not user_token:
+                return
+                
+            # 设置Token
+            self.github_manager.set_token(user_token)
+            self.workflow_manager.set_github_token(user_token)
+            
+            # 同步每个配置的最新运行信息
+            synced_count = 0
+            for config in configs:
+                try:
+                    # 获取该配置的最新运行
+                    latest_run = self.github_manager.get_latest_workflow_run(config['repo'], config['workflow'])
+                    if latest_run:
+                        # 更新或插入运行记录
+                        self.db_manager.insert_workflow_run(
+                            config_id=config['id'],
+                            run_id=str(latest_run['id']),
+                            status=latest_run.get('status', 'unknown'),
+                            html_url=latest_run.get('html_url'),
+                            conclusion=latest_run.get('conclusion'),
+                            logs_url=latest_run.get('logs_url'),
+                            workflow_name=latest_run.get('name'),
+                            repo=config['repo'],
+                            branch=config['branch'],
+                            trigger_user=latest_run.get('actor', {}).get('login')
+                        )
+                        synced_count += 1
+                        
+                        # 同时更新现有运行的状态
+                        self.update_existing_runs_status(config['repo'], config['workflow'])
+                        
+                except Exception as e:
+                    self.log_message(f"静默同步配置 {config['name']} 失败: {str(e)}", "ERROR")
+                    continue
+            
+            if synced_count > 0:
+                self.log_message(f"静默同步完成，更新了 {synced_count} 个运行记录")
+            
+        except Exception as e:
+            self.log_message(f"静默同步运行信息失败: {str(e)}", "ERROR")
+            
+    def update_existing_runs_status(self, repo: str, workflow: str):
+        """更新现有运行的状态"""
+        try:
+            # 获取该workflow的最近几个运行
+            runs = self.github_manager.list_workflow_runs(repo, workflow, per_page=5)
+            
+            for run in runs:
+                run_id = str(run['id'])
+                # 更新数据库中的运行状态
+                self.db_manager.update_workflow_run_status(
+                    run_id,
+                    run.get('status', 'unknown'),
+                    run.get('conclusion')
+                )
+                
+        except Exception as e:
+            self.log_message(f"更新运行状态失败: {str(e)}", "ERROR")
 
 def main():
     """主函数"""

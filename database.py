@@ -66,15 +66,23 @@ class DatabaseManager:
             )
         """)
         
-        # 工作流运行记录表
+        # 工作流运行记录表 - 扩展版本
         cursor.execute("""
             CREATE TABLE IF NOT EXISTS workflow_runs (
                 id INTEGER PRIMARY KEY AUTOINCREMENT,
                 config_id INTEGER,
-                run_id TEXT,
+                run_id TEXT UNIQUE,
+                html_url TEXT,
                 status TEXT,
+                conclusion TEXT,
                 created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
+                updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
                 completed_at TIMESTAMP,
+                logs_url TEXT,
+                workflow_name TEXT,
+                repo TEXT,
+                branch TEXT,
+                trigger_user TEXT,
                 FOREIGN KEY (config_id) REFERENCES workflow_configs (id) ON DELETE CASCADE
             )
         """)
@@ -89,59 +97,8 @@ class DatabaseManager:
             )
         """)
         
-        # 检查是否需要升级现有数据库
-        self._upgrade_database()
-        
         self.connection.commit()
         
-    def _upgrade_database(self):
-        """升级现有数据库结构"""
-        try:
-            cursor = self.connection.cursor()
-            
-            # 检查workflow_configs表是否有user_id列
-            cursor.execute("PRAGMA table_info(workflow_configs)")
-            columns = [column[1] for column in cursor.fetchall()]
-            
-            if 'user_id' not in columns:
-                self.logger.info("升级数据库：添加user_id列到workflow_configs表")
-                
-                # 添加user_id列
-                cursor.execute("ALTER TABLE workflow_configs ADD COLUMN user_id INTEGER DEFAULT 1")
-                
-                # 为现有记录设置默认用户ID
-                cursor.execute("UPDATE workflow_configs SET user_id = 1 WHERE user_id IS NULL")
-                
-                # 添加外键约束
-                cursor.execute("""
-                    CREATE TABLE workflow_configs_new (
-                        id INTEGER PRIMARY KEY AUTOINCREMENT,
-                        user_id INTEGER NOT NULL,
-                        name TEXT NOT NULL,
-                        repo TEXT NOT NULL,
-                        workflow TEXT NOT NULL,
-                        branch TEXT DEFAULT 'main',
-                        inputs TEXT,
-                        created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
-                        FOREIGN KEY (user_id) REFERENCES users (id) ON DELETE CASCADE
-                    )
-                """)
-                
-                cursor.execute("""
-                    INSERT INTO workflow_configs_new 
-                    SELECT id, user_id, name, repo, workflow, branch, inputs, created_at, updated_at 
-                    FROM workflow_configs
-                """)
-                
-                cursor.execute("DROP TABLE workflow_configs")
-                cursor.execute("ALTER TABLE workflow_configs_new RENAME TO workflow_configs")
-                
-                self.logger.info("数据库升级完成")
-                
-        except Exception as e:
-            self.logger.error(f"数据库升级失败: {str(e)}")
-            
     def is_connected(self) -> bool:
         """检查数据库连接状态"""
         try:
@@ -333,36 +290,84 @@ class DatabaseManager:
         query = "DELETE FROM workflow_configs WHERE id = ?"
         return self.execute_update(query, (config_id,))
         
-    def insert_workflow_run(self, config_id: int, run_id: str, status: str) -> Optional[int]:
+    def insert_workflow_run(self, config_id: int, run_id: str, status: str, 
+                           html_url: str = None, conclusion: str = None,
+                           logs_url: str = None, workflow_name: str = None,
+                           repo: str = None, branch: str = None, 
+                           trigger_user: str = None) -> Optional[int]:
         """插入工作流运行记录"""
         try:
             query = """
-                INSERT INTO workflow_runs (config_id, run_id, status, created_at)
-                VALUES (?, ?, ?, ?)
+                INSERT INTO workflow_runs (config_id, run_id, status, html_url, conclusion, 
+                                         logs_url, workflow_name, repo, branch, trigger_user, 
+                                         created_at, updated_at)
+                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
             """
             now = datetime.now().isoformat()
             
             cursor = self.connection.cursor()
-            cursor.execute(query, (config_id, run_id, status, now))
+            cursor.execute(query, (config_id, run_id, status, html_url, conclusion,
+                                 logs_url, workflow_name, repo, branch, trigger_user,
+                                 now, now))
             self.connection.commit()
             
             run_id_db = cursor.lastrowid
             self.logger.info(f"工作流运行记录插入成功: {run_id} (ID: {run_id_db})")
             return run_id_db
             
+        except sqlite3.IntegrityError:
+            # 如果run_id已存在，则更新
+            self.logger.info(f"工作流运行记录已存在，更新: {run_id}")
+            return self.update_workflow_run_by_run_id(run_id, status, conclusion, html_url)
         except Exception as e:
             self.logger.error(f"插入工作流运行记录失败: {str(e)}")
             return None
         
-    def update_workflow_run_status(self, run_id: str, status: str) -> bool:
+    def update_workflow_run_status(self, run_id: str, status: str, conclusion: str = None) -> bool:
         """更新工作流运行状态"""
         query = """
             UPDATE workflow_runs 
-            SET status = ?, completed_at = ?
+            SET status = ?, conclusion = ?, updated_at = ?
             WHERE run_id = ?
         """
         now = datetime.now().isoformat()
-        return self.execute_update(query, (status, now, run_id))
+        return self.execute_update(query, (status, conclusion, now, run_id))
+    
+    def update_workflow_run_by_run_id(self, run_id: str, status: str, conclusion: str = None, 
+                                     html_url: str = None) -> Optional[int]:
+        """根据run_id更新工作流运行记录"""
+        try:
+            query = """
+                UPDATE workflow_runs 
+                SET status = ?, conclusion = ?, html_url = ?, updated_at = ?
+                WHERE run_id = ?
+            """
+            now = datetime.now().isoformat()
+            
+            cursor = self.connection.cursor()
+            cursor.execute(query, (status, conclusion, html_url, now, run_id))
+            self.connection.commit()
+            
+            if cursor.rowcount > 0:
+                self.logger.info(f"工作流运行记录更新成功: {run_id}")
+                return cursor.lastrowid
+            return None
+            
+        except Exception as e:
+            self.logger.error(f"更新工作流运行记录失败: {str(e)}")
+            return None
+        
+    def get_workflow_run_by_run_id(self, run_id: str) -> Optional[Dict[str, Any]]:
+        """根据run_id获取工作流运行记录"""
+        query = """
+            SELECT wr.*, wc.name as config_name, u.username as user_name
+            FROM workflow_runs wr
+            LEFT JOIN workflow_configs wc ON wr.config_id = wc.id
+            LEFT JOIN users u ON wc.user_id = u.id
+            WHERE wr.run_id = ?
+        """
+        results = self.execute_query(query, (run_id,))
+        return results[0] if results else None
         
     def get_workflow_runs(self, config_id: int = None) -> List[Dict[str, Any]]:
         """获取工作流运行记录"""
@@ -370,7 +375,7 @@ class DatabaseManager:
             query = """
                 SELECT wr.*, wc.name as config_name, wc.repo, u.username as user_name
                 FROM workflow_runs wr
-                JOIN workflow_configs wc ON wr.config_id = wc.id
+                LEFT JOIN workflow_configs wc ON wr.config_id = wc.id
                 LEFT JOIN users u ON wc.user_id = u.id
                 WHERE wr.config_id = ?
                 ORDER BY wr.created_at DESC
@@ -380,7 +385,7 @@ class DatabaseManager:
             query = """
                 SELECT wr.*, wc.name as config_name, wc.repo, u.username as user_name
                 FROM workflow_runs wr
-                JOIN workflow_configs wc ON wr.config_id = wc.id
+                LEFT JOIN workflow_configs wc ON wr.config_id = wc.id
                 LEFT JOIN users u ON wc.user_id = u.id
                 ORDER BY wr.created_at DESC
             """
