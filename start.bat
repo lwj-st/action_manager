@@ -1,9 +1,9 @@
 @echo off
 chcp 65001 >nul
-title GitHub Action 管理系统
+title GitHub Action 管理系统 v3.0
 
 echo ========================================
-echo    GitHub Action 管理系统
+echo    GitHub Action 管理系统 v3.0
 echo ========================================
 echo.
 

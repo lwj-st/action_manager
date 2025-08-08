@@ -5,6 +5,11 @@ GitHub Action 管理系统 - 完全修复版本
 解决了用户管理、工作流关联、错误处理等问题
 """
 
+# 应用程序版本配置
+APP_NAME = "GitHub Action 管理系统"
+APP_VERSION = "v3.0"
+APP_FULL_NAME = f"{APP_NAME} {APP_VERSION}"
+
 import sys
 import os
 import json
@@ -168,7 +173,7 @@ class MainWindow(QMainWindow):
         
     def init_ui(self):
         """初始化用户界面"""
-        self.setWindowTitle("GitHub Action 管理系统 v3.0")
+        self.setWindowTitle(APP_FULL_NAME)
         self.setGeometry(100, 100, 1400, 900)
         
         # 设置样式
@@ -307,7 +312,7 @@ class MainWindow(QMainWindow):
         main_layout = QVBoxLayout(central_widget)
         
         # 创建标题
-        title_label = QLabel("🚀 GitHub Action 管理系统 v3.0")
+        title_label = QLabel(f"🚀 {APP_FULL_NAME}")
         title_label.setAlignment(Qt.AlignCenter)
         title_label.setFont(QFont("Microsoft YaHei", 20, QFont.Bold))
         title_label.setStyleSheet("""
@@ -1677,17 +1682,57 @@ class MultiFileLogViewer(QDialog):
         except Exception as e:
             QMessageBox.critical(self, "导出失败", f"导出日志失败: {str(e)}")
 
+def setup_application_icon(app):
+    """设置应用程序图标"""
+    try:
+        icon = QIcon()
+        icon_path = "icon/github.png"
+        
+        if os.path.exists(icon_path):
+            icon.addFile(icon_path)
+            print(f"已加载图标文件: {icon_path}")
+        else:
+            print(f"图标文件不存在: {icon_path}")
+            return None
+        
+        # 设置应用程序图标
+        app.setWindowIcon(icon)
+        app.setProperty("windowIcon", icon)
+        
+        # 设置任务栏图标（Windows特定）
+        try:
+            import ctypes
+            myappid = 'github.action.manager.3.0'
+            ctypes.windll.shell32.SetCurrentProcessExplicitAppUserModelID(myappid)
+            print("已设置Windows任务栏图标")
+        except Exception as e:
+            print(f"设置Windows任务栏图标失败: {str(e)}")
+        
+        return icon
+        
+    except Exception as e:
+        print(f"设置图标失败: {str(e)}")
+        return None
+
 def main():
     """主函数"""
     app = QApplication(sys.argv)
     
     # 设置应用程序信息
-    app.setApplicationName("GitHub Action 管理系统 v2.1")
-    app.setApplicationVersion("2.1.0")
+    app.setApplicationName(APP_FULL_NAME)
+    app.setApplicationVersion(APP_VERSION.replace('v', ''))
     app.setOrganizationName("AI Assistant")
+    
+    # 设置应用程序图标
+    icon = setup_application_icon(app)
     
     # 创建主窗口
     window = MainWindow()
+    
+    # 确保窗口图标设置正确
+    if icon:
+        window.setWindowIcon(icon)
+    
     window.show()
     
     # 运行应用程序
