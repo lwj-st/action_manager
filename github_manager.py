@@ -9,6 +9,8 @@ import json
 import logging
 from typing import List, Dict, Any, Optional
 from datetime import datetime
+import zipfile
+import io
 
 class GitHubManager:
     """GitHub API管理器"""
@@ -209,37 +211,39 @@ class GitHubManager:
             self.logger.error(f"取消工作流运行失败: {str(e)}")
             return False
             
-    def get_workflow_run_logs(self, repo: str, run_id: str) -> Optional[str]:
-        """获取工作流运行日志"""
+            
+    def get_workflow_run_logs(self, repo: str, run_id: str) -> Optional[dict]:
+        """
+        获取工作流运行日志
+        返回格式: { 'job1.txt': '内容...', 'job2.txt': '内容...' }
+        """
         try:
             if not self.token:
                 return None
-                
+
             url = f"{self.base_url}/repos/{repo}/actions/runs/{run_id}/logs"
             response = self.session.get(url)
-            
+
             if response.status_code == 200:
-                # 尝试不同的编码方式
+                logs = {}
                 try:
-                    # 首先尝试UTF-8
-                    return response.content.decode('utf-8')
-                except UnicodeDecodeError:
-                    try:
-                        # 如果UTF-8失败，尝试GBK
-                        return response.content.decode('gbk')
-                    except UnicodeDecodeError:
-                        try:
-                            # 如果GBK也失败，尝试latin-1
-                            return response.content.decode('latin-1')
-                        except UnicodeDecodeError:
-                            # 最后尝试忽略错误
-                            return response.content.decode('utf-8', errors='ignore')
-            return None
-            
+                    zip_bytes = io.BytesIO(response.content)
+                    with zipfile.ZipFile(zip_bytes) as zf:
+                        for f in zf.namelist():
+                            with zf.open(f) as log_file:
+                                logs[f] = log_file.read().decode("utf-8", errors="ignore")
+                    return logs
+                except Exception as e:
+                    self.logger.error(f"解压日志失败: {str(e)}")
+                    return None
+            else:
+                self.logger.error(f"获取日志失败: {response.status_code} - {response.text}")
+                return None
+
         except Exception as e:
             self.logger.error(f"获取工作流运行日志失败: {str(e)}")
             return None
-            
+
     def list_repositories(self, username: str = None) -> List[Dict[str, Any]]:
         """列出仓库"""
         try:

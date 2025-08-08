@@ -15,7 +15,7 @@ from PyQt5.QtWidgets import (QApplication, QMainWindow, QWidget, QVBoxLayout,
                              QLineEdit, QTextEdit, QTableWidget, QTableWidgetItem,
                              QComboBox, QMessageBox, QInputDialog, QHeaderView,
                              QGroupBox, QFormLayout, QSplitter, QFrame, QGridLayout,
-                             QScrollArea, QDialog, QDialogButtonBox)
+                             QScrollArea, QDialog, QDialogButtonBox, QListWidget, QListWidgetItem)
 from PyQt5.QtCore import Qt, QThread, pyqtSignal, QTimer
 from PyQt5.QtGui import QFont, QIcon, QPalette, QColor
 
@@ -747,8 +747,9 @@ class MainWindow(QMainWindow):
                 
                 # 后台获取运行信息
                 import threading
-                import time
                 import pytz
+                from PyQt5.QtCore import QTimer
+                
                 trigger_time = datetime.now(pytz.UTC)
                 thread = threading.Thread(
                     target=self.workflow_manager.get_triggered_run_info,
@@ -757,14 +758,8 @@ class MainWindow(QMainWindow):
                 thread.daemon = True
                 thread.start()
                 
-                # 延迟6秒后刷新运行列表，确保后台线程完成
-                def delayed_refresh():
-                    time.sleep(6)
-                    self.load_workflow_runs()
-                
-                refresh_thread = threading.Thread(target=delayed_refresh)
-                refresh_thread.daemon = True
-                refresh_thread.start()
+                # 使用QTimer延迟6秒后刷新运行列表，避免SQLite线程问题
+                QTimer.singleShot(6000, self.load_workflow_runs)
             else:
                 self.log_message(f"工作流触发失败: {repo}/{workflow}", "ERROR")
                 QMessageBox.critical(self, "错误", "工作流触发失败")
@@ -1049,8 +1044,9 @@ class MainWindow(QMainWindow):
                 
                 # 后台获取运行信息
                 import threading
-                import time
                 import pytz
+                from PyQt5.QtCore import QTimer
+                
                 trigger_time = datetime.now(pytz.UTC)
                 thread = threading.Thread(
                     target=self.workflow_manager.get_triggered_run_info,
@@ -1059,14 +1055,8 @@ class MainWindow(QMainWindow):
                 thread.daemon = True
                 thread.start()
                 
-                # 延迟6秒后刷新运行列表，确保后台线程完成
-                def delayed_refresh():
-                    time.sleep(6)
-                    self.load_workflow_runs()
-                
-                refresh_thread = threading.Thread(target=delayed_refresh)
-                refresh_thread.daemon = True
-                refresh_thread.start()
+                # 使用QTimer延迟6秒后刷新运行列表，避免SQLite线程问题
+                QTimer.singleShot(6000, self.load_workflow_runs)
             else:
                 self.log_message(f"保存的工作流触发失败: {config['name']}", "ERROR")
                 QMessageBox.critical(self, "错误", "工作流触发失败")
@@ -1289,9 +1279,44 @@ class MainWindow(QMainWindow):
     def show_run_logs(self, logs):
         """显示运行日志"""
         try:
-            # 创建一个新的对话框来显示日志
+            # 检查日志格式
+            if isinstance(logs, dict):
+                # 多文件日志，使用新的查看器
+                if len(logs) > 1:
+                    # 多个文件，使用多文件查看器
+                    viewer = MultiFileLogViewer(logs, self)
+                    viewer.exec_()
+                else:
+                    # 单个文件，显示内容
+                    filename = list(logs.keys())[0]
+                    content = logs[filename]
+                    self.show_single_log(filename, content)
+            elif isinstance(logs, str):
+                # 单个字符串日志
+                self.show_single_log("日志", logs)
+            elif isinstance(logs, bytes):
+                # 字节格式，尝试解码
+                try:
+                    decoded_logs = logs.decode('utf-8')
+                except UnicodeDecodeError:
+                    try:
+                        decoded_logs = logs.decode('gbk')
+                    except UnicodeDecodeError:
+                        decoded_logs = logs.decode('utf-8', errors='ignore')
+                self.show_single_log("日志", decoded_logs)
+            else:
+                # 其他格式，转换为字符串
+                self.show_single_log("日志", str(logs))
+                
+        except Exception as e:
+            self.log_message(f"显示日志失败: {str(e)}", "ERROR")
+            QMessageBox.critical(self, "错误", f"显示日志失败: {str(e)}")
+    
+    def show_single_log(self, title, content):
+        """显示单个日志文件"""
+        try:
             dialog = QDialog(self)
-            dialog.setWindowTitle("运行日志")
+            dialog.setWindowTitle(f"运行日志 - {title}")
             dialog.setModal(True)
             dialog.resize(800, 600)
             
@@ -1301,18 +1326,7 @@ class MainWindow(QMainWindow):
             log_text = QTextEdit()
             log_text.setReadOnly(True)
             log_text.setFont(QFont("Consolas", 10))
-            
-            # 确保日志内容正确显示
-            if isinstance(logs, bytes):
-                try:
-                    logs = logs.decode('utf-8')
-                except UnicodeDecodeError:
-                    try:
-                        logs = logs.decode('gbk')
-                    except UnicodeDecodeError:
-                        logs = logs.decode('utf-8', errors='ignore')
-            
-            log_text.setPlainText(logs)
+            log_text.setPlainText(content)
             
             layout.addWidget(log_text)
             
@@ -1320,7 +1334,7 @@ class MainWindow(QMainWindow):
             button_layout = QHBoxLayout()
             
             copy_btn = QPushButton("复制")
-            copy_btn.clicked.connect(lambda: self.copy_to_clipboard(logs))
+            copy_btn.clicked.connect(lambda: self.copy_to_clipboard(content))
             
             close_btn = QPushButton("关闭")
             close_btn.clicked.connect(dialog.accept)
@@ -1454,6 +1468,214 @@ class MainWindow(QMainWindow):
                 
         except Exception as e:
             self.log_message(f"更新运行状态失败: {str(e)}", "ERROR")
+
+class MultiFileLogViewer(QDialog):
+    """多文件日志查看器"""
+    
+    def __init__(self, logs_data, parent=None):
+        super().__init__(parent)
+        self.logs_data = logs_data  # 格式: { 'filename': 'content', ... }
+        self.current_file = None
+        self.init_ui()
+        
+    def clean_ansi_escape_codes(self, text):
+        """清理ANSI转义序列"""
+        import re
+        # 移除ANSI转义序列
+        ansi_escape = re.compile(r'\x1B(?:[@-Z\\-_]|\[[0-?]*[ -/]*[@-~])')
+        return ansi_escape.sub('', text)
+        
+    def init_ui(self):
+        self.setWindowTitle("工作流运行日志")
+        self.setModal(True)
+        self.resize(1000, 700)
+        
+        layout = QVBoxLayout(self)
+        
+        # 顶部信息栏
+        info_layout = QHBoxLayout()
+        info_label = QLabel(f"日志文件数量: {len(self.logs_data)}")
+        info_label.setStyleSheet("font-weight: bold; color: #2c3e50;")
+        info_layout.addWidget(info_label)
+        info_layout.addStretch()
+        
+        # 清理ANSI按钮
+        self.clean_ansi_btn = QPushButton("清理ANSI代码")
+        self.clean_ansi_btn.clicked.connect(self.toggle_ansi_cleaning)
+        self.clean_ansi_btn.setCheckable(True)
+        self.clean_ansi_btn.setChecked(True)  # 默认开启
+        info_layout.addWidget(self.clean_ansi_btn)
+        
+        # 导出按钮
+        export_btn = QPushButton("导出所有日志")
+        export_btn.clicked.connect(self.export_all_logs)
+        info_layout.addWidget(export_btn)
+        
+        layout.addLayout(info_layout)
+        
+        # 分割器：左侧文件列表，右侧日志内容
+        splitter = QSplitter(Qt.Horizontal)
+        
+        # 左侧：文件列表
+        left_widget = QWidget()
+        left_layout = QVBoxLayout(left_widget)
+        
+        file_label = QLabel("日志文件:")
+        file_label.setStyleSheet("font-weight: bold; margin-bottom: 5px;")
+        left_layout.addWidget(file_label)
+        
+        self.file_list = QListWidget()
+        self.file_list.setMaximumWidth(300)
+        self.file_list.itemClicked.connect(self.on_file_selected)
+        left_layout.addWidget(self.file_list)
+        
+        # 右侧：日志内容
+        right_widget = QWidget()
+        right_layout = QVBoxLayout(right_widget)
+        
+        content_label = QLabel("日志内容:")
+        content_label.setStyleSheet("font-weight: bold; margin-bottom: 5px;")
+        right_layout.addWidget(content_label)
+        
+        # 日志文本区域
+        self.log_text = QTextEdit()
+        self.log_text.setReadOnly(True)
+        self.log_text.setFont(QFont("Consolas", 10))
+        right_layout.addWidget(self.log_text)
+        
+        # 底部按钮
+        button_layout = QHBoxLayout()
+        
+        self.copy_btn = QPushButton("复制当前文件")
+        self.copy_btn.clicked.connect(self.copy_current_file)
+        self.copy_btn.setEnabled(False)
+        
+        close_btn = QPushButton("关闭")
+        close_btn.clicked.connect(self.accept)
+        
+        button_layout.addWidget(self.copy_btn)
+        button_layout.addStretch()
+        button_layout.addWidget(close_btn)
+        
+        right_layout.addLayout(button_layout)
+        
+        # 添加到分割器
+        splitter.addWidget(left_widget)
+        splitter.addWidget(right_widget)
+        splitter.setSizes([300, 700])  # 设置初始分割比例
+        
+        layout.addWidget(splitter)
+        
+        # 加载文件列表
+        self.load_file_list()
+        
+    def load_file_list(self):
+        """加载文件列表"""
+        self.file_list.clear()
+        
+        for filename in sorted(self.logs_data.keys()):
+            item = QListWidgetItem(filename)
+            # 根据文件类型设置图标或颜色
+            if filename.endswith('.txt'):
+                item.setForeground(QColor("#2c3e50"))
+            elif filename.endswith('.log'):
+                item.setForeground(QColor("#e74c3c"))
+            else:
+                item.setForeground(QColor("#7f8c8d"))
+            self.file_list.addItem(item)
+        
+        # 默认选择第一个文件
+        if self.file_list.count() > 0:
+            self.file_list.setCurrentRow(0)
+            self.on_file_selected(self.file_list.item(0))
+    
+    def on_file_selected(self, item):
+        """文件选择事件"""
+        if not item:
+            return
+            
+        filename = item.text()
+        self.current_file = filename
+        
+        # 显示文件内容
+        content = self.logs_data.get(filename, '')
+        
+        # 根据按钮状态决定是否清理ANSI代码
+        if self.clean_ansi_btn.isChecked():
+            content = self.clean_ansi_escape_codes(content)
+            
+        self.log_text.setPlainText(content)
+        
+        # 启用复制按钮
+        self.copy_btn.setEnabled(True)
+        
+        # 更新标题显示当前文件
+        self.setWindowTitle(f"工作流运行日志 - {filename}")
+    
+    def toggle_ansi_cleaning(self):
+        """切换ANSI清理状态"""
+        if self.current_file:
+            # 重新显示当前文件内容
+            self.on_file_selected(self.file_list.currentItem())
+    
+    def copy_current_file(self):
+        """复制当前文件内容"""
+        if not self.current_file:
+            return
+            
+        content = self.logs_data.get(self.current_file, '')
+        
+        # 根据按钮状态决定是否清理ANSI代码
+        if self.clean_ansi_btn.isChecked():
+            content = self.clean_ansi_escape_codes(content)
+            
+        try:
+            from PyQt5.QtWidgets import QApplication
+            QApplication.clipboard().setText(content)
+            QMessageBox.information(self, "成功", f"已复制 {self.current_file} 到剪贴板")
+        except Exception as e:
+            QMessageBox.critical(self, "错误", f"复制失败: {str(e)}")
+    
+    def export_all_logs(self):
+        """导出所有日志文件"""
+        try:
+            from PyQt5.QtWidgets import QFileDialog
+            import os
+            
+            # 选择导出目录
+            export_dir = QFileDialog.getExistingDirectory(
+                self, "选择导出目录", "", QFileDialog.ShowDirsOnly
+            )
+            
+            if not export_dir:
+                return
+            
+            # 创建日志文件夹
+            logs_dir = os.path.join(export_dir, "workflow_logs")
+            os.makedirs(logs_dir, exist_ok=True)
+            
+            # 导出所有文件
+            exported_count = 0
+            for filename, content in self.logs_data.items():
+                file_path = os.path.join(logs_dir, filename)
+                try:
+                    # 根据按钮状态决定是否清理ANSI代码
+                    if self.clean_ansi_btn.isChecked():
+                        content = self.clean_ansi_escape_codes(content)
+                        
+                    with open(file_path, 'w', encoding='utf-8') as f:
+                        f.write(content)
+                    exported_count += 1
+                except Exception as e:
+                    print(f"导出文件 {filename} 失败: {str(e)}")
+            
+            QMessageBox.information(
+                self, "导出成功", 
+                f"已导出 {exported_count}/{len(self.logs_data)} 个日志文件到:\n{logs_dir}"
+            )
+            
+        except Exception as e:
+            QMessageBox.critical(self, "导出失败", f"导出日志失败: {str(e)}")
 
 def main():
     """主函数"""

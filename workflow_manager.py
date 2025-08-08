@@ -376,13 +376,13 @@ class WorkflowManager:
             self.logger.error(f"取消工作流运行失败: {str(e)}")
             return False
     
-    def get_workflow_run_logs(self, run_id: str) -> Optional[str]:
+    def get_workflow_run_logs(self, run_id: str) -> Optional[dict]:
         """获取工作流运行日志"""
         try:
             # 检查是否是临时run_id
             if run_id.startswith('triggered_'):
                 self.logger.warning(f"无法获取临时运行ID的日志: {run_id}")
-                return "无法获取临时运行ID的日志，请等待运行信息同步或手动刷新。"
+                return {"error.txt": "无法获取临时运行ID的日志，请等待运行信息同步或手动刷新。"}
                 
             # 从数据库获取运行记录
             run_record = self.db_manager.get_workflow_run_by_run_id(run_id)
@@ -497,6 +497,6 @@ class WorkflowManager:
             self.logger.error(f"根据ID获取工作流运行记录失败: {str(e)}")
             return None
     
-    def get_run_logs(self, run_id: str) -> Optional[str]:
+    def get_run_logs(self, run_id: str) -> Optional[dict]:
         """获取工作流运行日志（兼容方法）"""
         return self.get_workflow_run_logs(run_id) 
