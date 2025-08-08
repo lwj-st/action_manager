@@ -948,7 +948,7 @@ class MainWindow(QMainWindow):
                 
                 # 删除按钮
                 delete_btn = QPushButton("删除")
-                delete_btn.setStyleSheet("background-color: #dc3545; font-size: 13px; font-weight: 600; padding: 8px 16px; min-width: 60px; min-height: 32px; border-radius: 4px;")
+                delete_btn.setStyleSheet("background-color: #dc3545; font-size: 13px; font-weight: 600; padding: 1px 16px; min-width: 60px; min-height: 32px; border-radius: 4px;")
                 delete_btn.clicked.connect(lambda checked, user_id=user['id']: self.delete_user(user_id))
                 self.user_table.setCellWidget(i, 4, delete_btn)
                 
@@ -1208,7 +1208,7 @@ class MainWindow(QMainWindow):
                 
                 # 取消运行按钮
                 cancel_btn = QPushButton("❌ 取消")
-                cancel_btn.setStyleSheet("background-color: #dc3545; font-size: 13px; font-weight: 600; padding: 8px 16px; min-width: 70px; min-height: 32px; border-radius: 4px;")
+                cancel_btn.setStyleSheet("background-color: #dc3545; font-size: 13px; font-weight: 600; padding: 1px 16px; min-width: 70px; min-height: 32px; border-radius: 4px;")
                 cancel_btn.setToolTip("取消运行")
                 cancel_btn.clicked.connect(lambda checked, run_id=run.get('run_id'): self.cancel_workflow_run(run_id))
                 button_layout.addWidget(cancel_btn)
@@ -1216,14 +1216,14 @@ class MainWindow(QMainWindow):
                 # 浏览器查看按钮
                 if run.get('html_url'):
                     open_browser_btn = QPushButton("🌐 查看")
-                    open_browser_btn.setStyleSheet("background-color: #28a745; font-size: 13px; font-weight: 600; padding: 8px 16px; min-width: 70px; min-height: 32px; border-radius: 4px;")
+                    open_browser_btn.setStyleSheet("background-color: #28a745; font-size: 13px; font-weight: 600; padding: 1px 16px; min-width: 70px; min-height: 32px; border-radius: 4px;")
                     open_browser_btn.setToolTip("在浏览器中打开")
                     open_browser_btn.clicked.connect(lambda checked, run_id=run.get('run_id'): self.open_run_in_browser(run_id))
                     button_layout.addWidget(open_browser_btn)
                 
                 # 查看日志按钮
                 view_logs_btn = QPushButton("📋 日志")
-                view_logs_btn.setStyleSheet("background-color: #007bff; font-size: 13px; font-weight: 600; padding: 8px 16px; min-width: 70px; min-height: 32px; border-radius: 4px;")
+                view_logs_btn.setStyleSheet("background-color: #007bff; font-size: 13px; font-weight: 600; padding: 1px 16px; min-width: 70px; min-height: 32px; border-radius: 4px;")
                 view_logs_btn.setToolTip("查看日志")
                 view_logs_btn.clicked.connect(lambda checked, run_id=run.get('run_id'): self.view_run_logs(run_id))
                 button_layout.addWidget(view_logs_btn)

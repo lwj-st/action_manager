@@ -3,6 +3,7 @@
 
 # 日志文件
 *.log
+workflow_logs/
 
 # 构建文件
 dist/*
